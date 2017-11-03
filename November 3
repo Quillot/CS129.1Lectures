@@ -1,0 +1,160 @@
+----------------------------------------------------------------
+------------------------Instructions----------------------------
+----------------------------------------------------------------
+-- First download data.js
+-- Put data.js in postgres_id > mongo
+-- In postgres_id>mongo, run `docker cp ./data.js mongo:/home/.`
+-- Then run `docker exec -it mongo mongo classmates`
+-- Then run `load('/home/data.js')`
+----------------------------------------------------------------
+----------------------------------------------------------------
+
+------------------------#1----------------------------
+
+map = function() {
+	var courses = this.course
+	emit({
+		course: courses
+       }, {
+		count: 1
+  });
+}    
+        
+reduce = function (key, values) {
+	var total = 0;
+	for(var i = 0; i < values.length; i++) {
+		total += values[i].count;
+  }
+  return { count: total };
+}
+
+results = db.runCommand({
+	mapReduce: 'classmates',
+	map: map,
+	reduce: reduce,
+	out: 'classmates.answer1'
+});
+
+db.classmates.answer1.find();
+
+
+------------------------#2----------------------------
+
+map = function() {
+	var years = this.year
+	emit({
+		year: years
+       }, {
+		count: 1
+  });
+}    
+        
+reduce = function (key, values) {
+	var total = 0;
+	for(var i = 0; i < values.length; i++) {
+		total += values[i].count;
+  }
+  return { count: total };
+}
+
+results = db.runCommand({
+	mapReduce: 'classmates',
+	map: map,
+	reduce: reduce,
+	out: 'classmates.answer2'
+});
+
+db.classmates.answer2.find();
+
+
+------------------------#3----------------------------
+
+map = function() {
+	var years = this.year
+  var courses = this.course
+	emit({
+		year: years,
+    course: courses
+       }, {
+		count: 1
+  });
+}    
+        
+reduce = function (key, values) {
+	var total = 0;
+	for(var i = 0; i < values.length; i++) {
+		total += values[i].count;
+  }
+  return { count: total };
+}
+
+results = db.runCommand({
+	mapReduce: 'classmates',
+	map: map,
+	reduce: reduce,
+	out: 'classmates.answer3'
+});
+
+db.classmates.answer3.find();
+
+------------------------#4----------------------------
+
+findInitials = function(classmates) {
+	var 
+		firstName = classmates.first_name,
+		lastName = classmates.last_name,
+		initials = "";
+	initials = lastName.charAt(0).toUpperCase() + firstName.charAt(0).toUpperCase();
+
+	return initials;
+}
+
+getFullName = function(classmates) {
+	var
+		firstName = classmates.first_name,
+		lastName = classmates.last_name;
+	fullName = lastName.toUpperCase() + ", " + firstName.toUpperCase();
+	return fullName;
+}
+
+db.system.js.save({
+	_id: 'findInitials',
+	value: findInitials
+});
+
+db.system.js.save({
+	_id: 'getFullName',
+	value: getFullName
+});
+
+map = function() {
+	// Get all the initials
+	var initials = findInitials(this);
+	var full_names = getFullName(this);
+
+	emit({
+		initials: initials
+       }, {
+		count: 1,
+		full_names: full_names
+  });
+}    
+        
+reduce = function (key, values) {
+	var total = 0;
+	var fullname = [];
+	for(var i = 0; i < values.length; i++) {
+		total += values[i].count;
+		fullname.push(values[i].full_names);
+  	}	
+  return { total, fullname };
+}
+
+results = db.runCommand({
+	mapReduce: 'classmates',
+	map: map,
+	reduce: reduce,
+	out: 'classmates.answer4'
+});
+
+db.classmates.answer4.find().pretty();
